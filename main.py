@@ -13,7 +13,7 @@ from datetime import datetime
 class AvitoParser:
     def __init__(self, debug=False, off_sleeps=False):
         """
-        Класс асинхронного парсерса объявлений с сайта Avito, раздел "коллекционирование монет"
+        Класс асинхронного парсера объявлений с Avito, раздел "коллекционирование монет"
         :param debug: Включить debug сообщения
         :param off_sleeps: Использовать слипы между запросами (для обхода каптч)
         """
@@ -110,14 +110,14 @@ class AvitoParser:
         else:
             return None
 
-    async def get_title_text(self, ad_url):
+    async def get_title_text(self, ads_url):
         """
         По урлу объявления получает его заголовок и текст описания
-        :param ad_url: URL объявления
+        :param ads_url: URL объявления
         :return: Заголовок и текст объявления. Если ошибка или не найдено, то (None, None)
         """
         headers = {'User-Agent': self._user_agent.random}
-        async with self._sess.get(ad_url, headers=headers) as resp:
+        async with self._sess.get(ads_url, headers=headers) as resp:
             if resp.status != 200:
                 return None, None
 
@@ -172,7 +172,7 @@ class AvitoParser:
 
     async def _fetch_page(self, page_num):
         """
-        Асинхронно получить страницу со списком объявлений
+        Асинхронно получает страницу со списком объявлений
         :param page_num: Pagination. Номер страницы
         :return: 1, если страница успешно получена, иначе 0
         """
@@ -210,7 +210,8 @@ class AvitoParser:
 
     def run_parsing(self, page_num=1):
         """
-        Запускает основной цикл асинхронного парсера Avito.
+        Запускает основной цикл асинхронного парсера Avito
+        :param page_num: С какой страницы начинать парсинг
         """
         consumer = asyncio.ensure_future(self._consume(), loop=self._loop)
 
