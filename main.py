@@ -268,6 +268,8 @@ def main():
     print('* Без указания года выпуска:', parser.ads_without_year)
     print('* РСФСР:', parser.rsfsr_ads)
     print('* Российской Империи:', parser.russian_empire_ads)
+    print('* Соотношение монет РСФСР к монетам Российской Империи:',
+          parser.rsfsr_ads / (parser.russian_empire_ads + 1e-9))
 
 if __name__ == '__main__':
     main()
