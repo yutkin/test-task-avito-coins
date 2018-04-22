@@ -39,7 +39,7 @@ class AvitoParser:
         self._n_rus_empire_ads = 0
         self._dates_extractor = DatesExtractor()
 
-    async def random_sleep(self, lo=3, hi=7, log=True):
+    async def _random_sleep(self, lo=3, hi=7, log=True):
         """
         Чтобы не словить каптчу, имитируем случайные паузы между запросами
         :param lo: Нижняя граница для генерации секунд
@@ -90,9 +90,9 @@ class AvitoParser:
         return ((year == 0 or 1922 <= year <= 1991) and any([k in text for k in keywords1])) or \
                (1922 <= year <= 1991 and any([k in text for k in keywords2]))
 
-    def text_has_year(self, text):
+    def _get_year_from_text(self, text):
         """
-        Проверяет есть ли в тексте упоминание года
+        Получает год выпуска из текста объявления
         :param text: Текст объявления
         :return: Год если в тексте есть год, иначе None
         """
@@ -110,7 +110,7 @@ class AvitoParser:
         else:
             return None
 
-    async def get_title_text(self, ads_url):
+    async def _get_title_text(self, ads_url):
         """
         По урлу объявления получает его заголовок и текст описания
         :param ads_url: URL объявления
@@ -143,14 +143,14 @@ class AvitoParser:
             self._log.info('Processing {} [Done: {} | In queue: {}]'.format(
                 url, self._n_ads, self._queue.qsize()))
 
-            title, text = await self.get_title_text(url)
+            title, text = await self._get_title_text(url)
 
             if title is None or text is None:
                 self._log.debug('Title or Text is None {}'.format(url))
 
             ads_text = '{} {}'.format(title, text)
 
-            year = self.text_has_year(ads_text)
+            year = self._get_year_from_text(ads_text)
             self._n_ads_have_year += int(year is not None)
 
             if year is None:
@@ -168,7 +168,7 @@ class AvitoParser:
             self._n_ads += 1
 
             if not self._off_sleeps:
-                await self.random_sleep()
+                await self._random_sleep()
 
     async def _fetch_page(self, page_num):
         """
@@ -204,7 +204,7 @@ class AvitoParser:
             self._queue.task_done()
 
         if not self._off_sleeps:
-            await self.random_sleep()
+            await self._random_sleep()
 
         return int(html is not None)
 
