@@ -11,7 +11,6 @@
 
 ## Запуск
 ```
-python main.py -h
 usage: main.py [-h] [-d] [--off-sleeps]
 
 optional arguments:
