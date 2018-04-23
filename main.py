@@ -9,6 +9,7 @@ import re
 from fake_useragent import UserAgent
 from natasha import DatesExtractor
 from datetime import datetime
+import shelve
 
 class AvitoParser:
     def __init__(self, debug=False, off_sleeps=False):
@@ -33,13 +34,15 @@ class AvitoParser:
         self._sess = None
         self._user_agent = UserAgent()
 
+        self._db = shelve.open('./parser.db')
+
         self._n_ads = 0
         self._n_ads_have_year = 0
         self._n_rsfsr_ads = 0
         self._n_rus_empire_ads = 0
         self._dates_extractor = DatesExtractor()
 
-    async def _random_sleep(self, lo=3, hi=7, log=True):
+    async def _random_sleep(self, lo=3, hi=5, log=True):
         """
         Чтобы не словить каптчу, имитируем случайные паузы между запросами
         :param lo: Нижняя граница для генерации секунд
@@ -143,12 +146,18 @@ class AvitoParser:
             self._log.info('Processing {} [Done: {} | In queue: {}]'.format(
                 url, self._n_ads, self._queue.qsize()))
 
-            title, text = await self._get_title_text(url)
+            cached = False
+            if url not in self._db:
+                title, text = await self._get_title_text(url)
+                self._db[url] = (title, text)
+            else:
+                title, text = self._db[url]
+                cached = True
 
             if title is None or text is None:
                 self._log.debug('Title or Text is None {}'.format(url))
-
             ads_text = '{} {}'.format(title, text)
+
 
             year = self._get_year_from_text(ads_text)
             self._n_ads_have_year += int(year is not None)
@@ -167,7 +176,7 @@ class AvitoParser:
             self._queue.task_done()
             self._n_ads += 1
 
-            if not self._off_sleeps:
+            if not self._off_sleeps and not cached:
                 await self._random_sleep()
 
     async def _fetch_page(self, page_num):
@@ -181,29 +190,35 @@ class AvitoParser:
 
         self._log.info('Fetching %s' % url)
 
+        cached = False
         html = None
-        async with self._sess.get(url, allow_redirects=False, headers=headers) as resp:
-            if resp.status == 200:
-                html = await resp.text()
-            elif resp.status == 302: # Redirect
-                if 'blocked' in resp.headers.get('Location'):
-                    if not self._off_sleeps:
-                        sleep_s = random.randint(15, 30)
-                        self._log.error('Got captcha! Falling asleep for %d seconds...' % sleep_s)
-                        await asyncio.sleep(sleep_s)
+        if url in self._db:
+            html = self._db[url]
+            cached = True
+        else:
+            async with self._sess.get(url, allow_redirects=False, headers=headers) as resp:
+                if resp.status == 200:
+                    html = await resp.text()
+                elif resp.status == 302: # Redirect
+                    if 'blocked' in resp.headers.get('Location'):
+                        if not self._off_sleeps:
+                            sleep_s = random.randint(15, 30)
+                            self._log.error('Got captcha! Falling asleep for %d seconds...' % sleep_s)
+                            await asyncio.sleep(sleep_s)
+                        else:
+                            self._log.error('Got captcha!')
                     else:
-                        self._log.error('Got captcha!')
-                else:
-                    self._log.warning('%s does not exist. Stopping the loop...' % url)
-                    self._run_loop = False
+                        self._log.warning('%s does not exist. Stopping the loop...' % url)
+                        self._run_loop = False
 
         if html is not None:
+            self._db[url] = html
             parsed_html = HTML(html=html).find('.description-title-link')
             for el in parsed_html:
                 await self._queue.put('https://avito.ru/' + el.attrs['id'])
             self._queue.task_done()
 
-        if not self._off_sleeps:
+        if not self._off_sleeps and not cached:
             await self._random_sleep()
 
         return int(html is not None)
@@ -249,6 +264,7 @@ class AvitoParser:
             self._log.info('Stopping...')
         self._loop.run_until_complete(self._sess.close())
         self._loop.stop()
+        self._db.close()
         return ret
 
 
