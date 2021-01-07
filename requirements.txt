@@ -15,7 +15,7 @@ humanfriendly==4.10
 idna==2.6
 idna-ssl==1.0.1
 intervaltree==2.1.0
-lxml==4.2.1
+lxml==4.6.2
 multidict==4.2.0
 -e git+https://github.com/yutkin/natasha#egg=natasha
 parse==1.8.2
